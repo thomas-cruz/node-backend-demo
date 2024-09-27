@@ -1,0 +1,231 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountType {
+  Admin
+  InstitutionMember
+  User
+}
+
+enum UserStatus {
+  Active
+  Inactive
+  Deleted
+}
+
+enum ScooterStatus {
+  Active
+  Available
+  Unavailable
+}
+
+enum BookingType {
+  Reservation
+  OnDemand
+}
+
+enum BookingStatus {
+  Open
+  Ongoing
+  Closed
+  Cancelled
+}
+
+model User {
+  id           String       @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String       @unique
+  mobileNumber String       @unique
+  password     String?
+  accountType  AccountType?
+  status       UserStatus?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  memo         String       @default("")
+
+  passwordResetToken PasswordResetToken?
+  customer           Customer?
+  institutionMember  InstitutionMember?
+  admin              Admin?
+}
+
+model PasswordResetToken {
+  id     String @id @default(uuid())
+  userId String @unique
+  token  String
+
+  // Relation
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Customer {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  rfidCardNumber  String
+  institutionId   String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  firstTimeKiosk  Boolean  @default(true)
+  firstTimeMobile Boolean  @default(true)
+
+  // Relation
+  user                    User             @relation(fields: [userId], references: [id])
+  institution             Institution      @relation(fields: [institutionId], references: [id])
+  Booking                 Booking[]
+  ReportedIssues          ReportedIssues[]
+  scooterPools            CustomerScooterPool[]
+}
+
+model InstitutionMember {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  institutionId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relation
+  user        User        @relation(fields: [userId], references: [id])
+  institution Institution @relation(fields: [institutionId], references: [id])
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relation
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Institution {
+  id                String   @id @default(uuid())
+  name              String   @unique
+  address           String
+  zipCode           String   @default("")
+  city              String   @default("")
+  email             String   @unique
+  contactNumber     String   @unique
+  contactPersonName String
+  cocNumber         String   @unique
+  country           String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  memo              String   @default("")
+
+  customer          Customer[]
+  institutionMember InstitutionMember[]
+  branding          Branding?
+  ScooterPool       ScooterPool[]
+}
+
+model Branding {
+  id            String   @id @default(uuid())
+  institutionId String   @unique
+  brandName     String
+  logo          Json
+  styling       Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relation
+  institution Institution @relation(fields: [institutionId], references: [id])
+}
+
+model CustomerScooterPool {
+  customerId    String
+  scooterPoolId String
+  assignedAt    DateTime @default(now())
+
+  // Relations
+  customer      Customer    @relation(fields: [customerId], references: [id])
+  scooterPool   ScooterPool @relation(fields: [scooterPoolId], references: [id])
+
+  // Composite primary key
+  @@id([customerId, scooterPoolId])
+}
+
+model ScooterPool {
+  id            String   @id @default(uuid())
+  institutionId String
+  name          String   @unique
+  isActive      Boolean  @default(true)
+  location      String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relation
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  scooters      Scooter[]
+  customers     CustomerScooterPool[]
+}
+
+model Scooter {
+  id                    String        @id @default(uuid())
+  scooterPoolId         String
+  scooterName           String
+  scooterState          Boolean       @default(false)
+  currentMileage        Float         @default(0.0)
+  speed                 Int           @default(0)
+  batteryPercentage     Int           @default(0)
+  currentLocation       Json          
+  commandSent           String        @default("0")
+  status                ScooterStatus @default(Available)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  booking   Booking[]
+
+  // Relation
+  scooterPool    ScooterPool      @relation(fields: [scooterPoolId], references: [id])
+  ReportedIssues ReportedIssues[]
+}
+
+model Booking {
+  id             String        @id @default(uuid())
+  customerId     String
+  scooterId      String
+  bookingDate    DateTime
+  bookingEndDate DateTime
+  startedAt      DateTime?
+  returnedAt     DateTime?
+  bookingType    BookingType
+  bookingStatus  BookingStatus @default(Open)
+  duration       Int
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relation
+  scooter        Scooter          @relation(fields: [scooterId], references: [id])
+  customer       Customer         @relation(fields: [customerId], references: [id])
+  ReportedIssues ReportedIssues[]
+}
+
+model ReportedIssues {
+  id          String   @id @default(uuid())
+  userId      String
+  bookingId   String
+  scooterId   String
+  description String
+  image       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relation
+  booking  Booking  @relation(fields: [bookingId], references: [id])
+  customer Customer @relation(fields: [userId], references: [userId])
+  scooter  Scooter  @relation(fields: [scooterId], references: [id])
+}
