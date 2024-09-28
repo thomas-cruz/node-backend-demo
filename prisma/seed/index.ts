@@ -27,7 +27,7 @@ async function runSeeders() {
   await prisma.user.create({
     data: {
       id: randomUUID(),
-      email: 'deelscootmobiel-admin@prostrive.io',
+      email: 'scooter-admin@prostrive.io',
       firstName: 'Super',
       lastName: 'Admin',
       mobileNumber: '+31243611111',
@@ -44,7 +44,7 @@ async function runSeeders() {
   await prisma.user.create({
     data: {
       id: randomUUID(),
-      email: 'deelscootmobiel-user@prostrive.io',
+      email: 'scooter-user@prostrive.io',
       firstName: 'John',
       lastName: 'Doe',
       mobileNumber: '+31243611112',
